@@ -1,0 +1,230 @@
+---
+title: "대구광역시 서구지역의<br>교통 소외 현상"
+author: "데이터 저널리즘 1조<br>장세인<br>윤성필<br>장스홍<br>김현우"
+date: "`r Sys.Date()`"
+output: 
+  prettydoc::html_pretty:
+    theme: leonids
+    toc: yes
+    number_sections: true
+    
+---
+<style type ="text/css">
+  @font-face {
+    font-family: 'KCC-Hanbit';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2403-2@1.0/KCC-Hanbit.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+  }
+ body{
+ font-family: 'KCC-Hanbit';}
+</style>
+
+
+# 지하철도 없는 서구의 대중교통 문제는 없나?
+최근 대구 서구 지역이 대구의 교통 요충지로 부상하며 그 중요성이 대두되고 있다. 행정안전부의 ‘주민등록 인구통계’에 따르면 현재 서구 인구는 약 16만 4천명으로 전년보다 약 4천명이 늘었고 증가분의 절반이 30대로 젊은 세대 위주의 거주민이 증가하고 있는 추세다. 
+
+이러한 현상의 중심에는 서대구역이 있다. 서대구역은 개통 2년 만에 이용객 290만명을 돌파하며 대구 교통의 중심이였던 동대구역을 대신해 대구 서남부권 교통 중심지로 성장하고 있다. 올해 말 개통 예정인 대구권광역철도, 대구산업선(27년), 신공항철도(30년), 달빛내륙고속철도(30년)까지 4개 철도노선이 추가 개통됨에 따라 서대구역 이용객 수는 꾸준히 증가할 것으로 기대된다. 
+하지만, 이렇게 대구 내에서 서구 지역의 중요성이 증가함에도 불구하고 여전히 서구 지역 대중교통에 대한 잡음은 끊이지 않고 있다. 특히, 새로 개통하는 대구 4호선에 당초 계획된 서구 인구 밀집지역인 평리동, 내당동, 비산동을 관통하는 지하철역이 제외되고 모든 지하철 노선이 서구를 비켜가면서 서구 주민들은 서구가 지역을 관통하는 도시철도가 하나도 없는 교통오지로 전락하고 있다며 불만을 토했다. 
+
+서대구역 접근성 개선을 요구하는 목소리 또한 높다. 실제 일부 주민은 거리상 서대구역이 가까움에도 교통편 부족으로 동대구역을 더 자주 방문한다고 말한다. 
+
+> “서대구역을 가려면 버스로 가는 방법 밖에 없어서 자차로 가지 않는 이상 너무 불편해요. 서대구역 가는 버스가 별로 없는 데다가 배차간격이 커서 그냥 지하철타고 동대구역으로 가는 게 더 편해요. “
+달서구 주민 장모씨(여.24세)
+
+그렇기에 서구지역 버스 이용 현황과 서대구역의 접근성을 분석하여 서구지역 교통 소외 현상의 실태를 파악하고 분석해 보이겠다.
+
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(sf)
+library(gridExtra)
+library(xml2)
+library(readxl)
+library(servr)
+library(knitr)
+library(rmarkdown)
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+map <- st_read('bs_20240425.shp')
+map_daegubus <- fortify(map)
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+map_daegu <- st_read('대구광역시_시군구_군위포함.shp')
+map_daegu1 <- fortify(map_daegu)
+map_daegu1 <- map_daegu1 |>
+  filter(!row_number() %in% 9)
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+daegu_line <- st_read('link_20240425.shp')
+line <- fortify(daegu_line)
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+station <- read.csv('station.csv')
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+x<- data.frame(구 = c("서구","수성구","북구","남구","달서구","동구","중구","달성군","군위군"), 
+포화도 = c(0,0,0,0,0,0,0,0,0))
+      
+          
+x[1,"포화도"] <- station |>
+  filter(grepl("대구광역시 서구",행정구역)) |>
+  summarise(서구=mean(합계))
+x[2,"포화도"] <- station |>  
+  filter(grepl("대구광역시 수성구",행정구역)) |>
+  summarise(수성구=mean(합계))
+x[3,"포화도"] <-station |>  
+  filter(grepl("대구광역시 북구",행정구역)) |>
+  summarise(북구=mean(합계))
+x[4,"포화도"] <-station |>  
+  filter(grepl("대구광역시 남구",행정구역)) |>
+  summarise(남구=mean(합계))
+x[5,"포화도"] <-station |>  
+  filter(grepl("대구광역시 달서구",행정구역)) |>
+  summarise(달서구=mean(합계))
+x[6,"포화도"] <-station |>  
+  filter(grepl("대구광역시 동구",행정구역)) |>
+  summarise(동구=mean(합계))
+x[7,"포화도"] <-station |>  
+  filter(grepl("대구광역시 중구",행정구역)) |>
+  summarise(중구=mean(합계))
+x[8,"포화도"] <-station |>  
+  filter(grepl("대구광역시 달성군",행정구역)) |>
+  summarise(달성군=mean(합계))
+x[9,"포화도"] <-station |>  
+  filter(grepl("대구광역시 군위군",행정구역)) |>
+  summarise(군위군=mean(합계))
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+west_points = data.frame(lon = 128.5404, lat = 35.8814) |> 
+  st_as_sf(coords = c("lon", "lat"), crs = "EPSG:4326")
+
+east_points = data.frame(lon = 128.6283, lat = 35.8793) |> 
+  st_as_sf(coords = c("lon", "lat"), crs = "EPSG:4326")
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+links <- read_excel('route_link_20240425.xls')
+```
+
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+eastx <- c(153,413,524,708,805,814,937,818,"북구3","수성4","순환2-1",101,401,"급행1","팔공2",425,615,708,909,399,"동구1","순환2",555,55)
+
+link_east <- links |>
+  filter(grepl(paste(eastx,collapse = "|"),ROUTE_NO))
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+line_east <- line |>
+  filter(line$link_id %in% link_east$LINK_ID)
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+link_west <- links |>
+  filter(grepl(234,ROUTE_NO)|grepl(204,ROUTE_NO)|grepl(240,ROUTE_NO)|grepl(309,ROUTE_NO)|grepl(524,ROUTE_NO)|grepl("서구1",ROUTE_NO)|grepl("칠곡6",ROUTE_NO)|grepl("급행8",ROUTE_NO))
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+line_west <- line |>
+  filter(line$link_id %in% link_west$LINK_ID)
+```
+
+# 서구지역, 버스 노선도 부족하다.
+
+## 서대구역과 동대구역의 비교 : 전체적인 접근성
+
+서대구역 버스노선 무엇이 문제인가?
+부족한 정류소 수 뿐만 아니라 노선의 수 또한 서구 지역 주민들이 겪는 불편과 소외감의 큰 원인이 되고 있다. 이러한 문제점은 서구 지역의 교통 허브인 서대구역과 비슷한 목적을 가진 동대구역을 비교하였을 때 현저히 드러난다. 다음 지도를 살펴보자
+```{r, echo=FALSE}
+map_visual_east<-line_east |>
+  ggplot()+
+  geom_sf(data=map_daegu1) +
+  geom_sf(size=3,col='BLUE') +
+  geom_sf(data = east_points, size=4, col = "WHITE",shape=24, fill="BLUE") +
+  geom_sf(data = west_points, size=4, col = "WHITE", shape=24, fill="RED") +
+  theme_void()
+
+map_visual_west<-line_west |>
+  ggplot()+
+  geom_sf(data=map_daegu1) +
+  geom_sf(data=line_west,col="RED")+
+  geom_sf(data = east_points, size=4, col = "WHITE",shape=24, fill="BLUE") +
+  geom_sf(data = west_points, size=4, col = "WHITE", shape=24, fill="RED") +
+  theme_void() 
+  
+grid.arrange(map_visual_west,map_visual_east,ncol=2, nrow=1)
+```
+
+
+>서대구역과 동대구역의 버스노선지도. 노선 수와 범위에서 눈에 띄게 차이가 난다.
+
+서대구역을 지나는 노선은 총 8개이지만 동대구역을 지나는 노선은 20여개에 이르며 이를 지도상에 표시하면 위와 같다. 서대구역이 범 경상권을 아우르는 교통의 허브의 역할을 하기에는 다소 초라한 모습이다. 이는 대구 지역에서 고속철도를 이용하기 위한 접근성에서 서대구역의 경쟁력이 현저히 떨어진다는 의미이다. 8개의 노선밖에 운행이 되지 않으니 노선이 지나지 않는 많은 지역에서는 버스, 혹은 도시철도로 환승해서 서대구역으로 가야 한다. 하지만 대부분의 시민들은 그런 수고를 들이지 않고 차라리 동대구역을 이용하고 있는 것이 현실이다. 다른 지역에서 대구로 오는 경우에도 상황은 비슷하다. 서대구역에서 하차할 시 지하철이 부재하고 편재된 버스 노선이 적기 때문에 가고자 하는 목적지 까지 한번의 대중교통 이용으로 도달하지 못할 수 있어 역시 환승이나 다른 교통수단을 이용해야 할 가능성이 크다. 대구 시민의 경우와 마찬가지 이유로 역시 동대구역을 더 선호하게 될 것이다.
+
+서구지역의 교통의 중추인 서대구역에 편제된 버스가 적다는 것은 서구지역 전체의 대중교통 편재가 적다는 것을 의미하기도 한다. 지도에서 보이는 것 처럼 절대적으로 노선 수가 부족하기 때문에 서구에서 다른 지역으로 가기위해서는 많은 경우 환승이나 다른 수단이 필요하다. 동대구역과의 비교는 차치하고서라도, 이런 문제는 서구지역 주민들의 교통 불편과 나아가 소외경험까지지 초래할 수 있다. 
+
+이러한 문제는 도심지로의 이동에서도 발생하고 있다.다음 지도를 살펴보자.
+
+## 서대구역과 동대구역의 비교 : 도심으로의 접근성
+```{r, echo=FALSE, results='hide',message=FALSE}
+downtown = data.frame(lon = 128.6102, lat = 35.8699) |> 
+  st_as_sf(coords = c("lon", "lat"), crs = "EPSG:4326")
+
+
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+target_crs <- '+proj=moll'
+daegumap_trans <- st_transform(map_daegu1, crs = target_crs)
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+disp_win_wgs84 <- st_sfc(st_point(c(128.50,35.75)), st_point(c(128.70,35.93 )), crs = 4326)
+disp_win_wgs84
+
+```
+
+```{r, echo=FALSE, results='hide',message=FALSE}
+disp_win_trans <- st_transform(disp_win_wgs84, crs = target_crs)
+disp_win_trans
+
+```
+
+```{r, echo=FALSE}
+disp_win_coord <- st_coordinates(disp_win_trans)
+
+zooming_west<-ggplot() + 
+  geom_sf(data = daegumap_trans, linewidth = 0.707) +
+  geom_sf(data=line_west,col="RED", linewidth = 1)+
+  geom_sf(data = east_points, size=4, col = "WHITE",shape=24, fill="BLUE") +
+  geom_sf(data = west_points, size=4, col = "WHITE", shape=24, fill="RED") +
+  geom_sf(data = downtown, size = 50, shape = 1, colour = "BLACK", stroke=1.3)+
+  coord_sf(xlim = c(128.45,128.71), ylim = c(35.78, 36.00), crs=st_crs(4019)) +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_blank(),panel.background = element_rect(fill="white", colour="white"),
+        strip.background = element_rect(fill="white", colour="white"))
+
+zooming_east<-ggplot()+
+geom_sf(data = daegumap_trans,linewidth = 0.707) +
+  geom_sf(data=line_east ,col='BLUE', linewidth=1) +
+  geom_sf(data = east_points, size=4, col = "WHITE",shape=24, fill="BLUE") +
+  geom_sf(data = west_points, size=4, col = "WHITE", shape=24, fill="RED") +
+   geom_sf(data = downtown, size = 50, shape = 1, colour = "BLACK", stroke=1.3)+
+  coord_sf(xlim = c(128.45,128.71), ylim = c(35.78, 36.00), crs=st_crs(4019)) +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_blank(),panel.background = element_rect(fill="white", colour="white"),
+        strip.background = element_rect(fill="white", colour="white"))
+  
+
+grid.arrange(zooming_west,zooming_east,nrow=1, ncol=2) 
+```
+
+
+>도심지역을 확대한 지도. 도심지역에 편재된 노선에서도 큰 차이가 난다.
+
+위 지도는 노선도를 확대한 것이며 검은 원은 대구의 도심지를 나타낸 것이다. 서구와 서대구역은 대구 전 지역으로의 접근성도 부족하지만 지도에서 보이는 것처럼 대구의 도심, 주거지역으로의 접근성 또한 부족하다. 한눈에 보더라도 동대구역에서 출발하는 노선들이 훨씬 촘촘하게 도심지를 지나는 것을 볼 수 있다. 이는 결과적으로 서구지역 주민들은 다른 먼 지역이 아니라 비교적 가까운 도심지역으로 갈 때에도 다른 지역보다 현저히 적은 버스 노선으로 인해 환승이나 다른 교통수단을 이용해야 한다는 것을 의미한다. 이는 앞서 살펴본 것 처럼 서구주민의 불편과 소외 감정을 불러일으킬 수 있다.
